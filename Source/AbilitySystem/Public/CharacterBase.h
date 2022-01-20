@@ -10,6 +10,7 @@
 
 class UGameplayAbility;
 class UAttributeSetBase;
+class UGameplayAbilityBase;
 
 UCLASS()
 class ABILITYSYSTEM_API ACharacterBase : public ACharacter, public IAbilitySystemInterface
@@ -42,6 +43,9 @@ public:
 	UFUNCTION(BlueprintCallable, Category="CharacterBase")
 	void AcquireAbility(TSubclassOf<UGameplayAbility> AbilityToAcquire);
 
+	UFUNCTION(BlueprintCallable, Category="CharacterBase")
+	void AcquireAbilities(TArray<TSubclassOf<UGameplayAbility>> AbilitiesToAcquire);
+	
 	UFUNCTION()
 	void OnHealthChanged(float Health, float MaxHealth);
 	UFUNCTION(BlueprintImplementableEvent, Category="CharacterBase", meta=(DisplayName="OnHealthChanged"))
@@ -73,10 +77,19 @@ public:
 	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="CharacterBAse")
 	FGameplayTag FullHealthTag;
-	
+
+	UFUNCTION(BlueprintCallable, Category="CharacterBase")
+	void HitStun(float StunDuration);
 protected:
 	bool bIsDead;
 	uint8 TeamID;
 	void AutoDetermineTeamIDByControllerType();
-	void Dead() const;
+	void Dead();
+	
+	void DisableInputControl();
+	void EnableInputControl();
+
+	FTimerHandle StunTimerHandle;
+
+	void AddAbilityToUI(TSubclassOf<UGameplayAbilityBase> AbilityToAdd);
 };

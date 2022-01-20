@@ -7,6 +7,8 @@
 #include "AIController.h"
 #include "AttributeSetBase.h"
 #include "BrainComponent.h"
+#include "GameplayAbilityBase.h"
+#include "PlayerControllerBase.h"
 
 // Sets default values
 ACharacterBase::ACharacterBase()
@@ -62,6 +64,19 @@ void ACharacterBase::AcquireAbility(TSubclassOf<UGameplayAbility> AbilityToAcqui
 	}
 }
 
+void ACharacterBase::AcquireAbilities(TArray<TSubclassOf<UGameplayAbility>> AbilitiesToAcquire)
+{
+	for(const TSubclassOf<UGameplayAbility> AbilityItem : AbilitiesToAcquire)
+	{
+		AcquireAbility(AbilityItem);
+		if( AbilityItem->IsChildOf(UGameplayAbilityBase::StaticClass()))
+		{
+			const TSubclassOf<UGameplayAbilityBase> AbilityBaseClass = *AbilityItem;
+			AddAbilityToUI(AbilityBaseClass);
+		}	
+	}
+}
+
 void ACharacterBase::OnHealthChanged(float Health, float MaxHealth)
 {
 	if( Health <= 0.0f && !bIsDead )
@@ -101,6 +116,12 @@ void ACharacterBase::RemoveGameplayTag(FGameplayTag& TagToRemove)
 	
 }
 
+void ACharacterBase::HitStun(float StunDuration)
+{
+	DisableInputControl();
+	GetWorldTimerManager().SetTimer(StunTimerHandle, this, &ACharacterBase::EnableInputControl, StunDuration, false);
+}
+
 void ACharacterBase::AutoDetermineTeamIDByControllerType()
 {
 	if( GetController() && GetController()->IsPlayerController())
@@ -109,7 +130,12 @@ void ACharacterBase::AutoDetermineTeamIDByControllerType()
 	}
 }
 
-void ACharacterBase::Dead() const
+void ACharacterBase::Dead()
+{
+	DisableInputControl();
+}
+
+void ACharacterBase::DisableInputControl()
 {
 	APlayerController* PC = Cast<APlayerController>(GetController());
 	if( PC )
@@ -122,5 +148,38 @@ void ACharacterBase::Dead() const
 	{
 		AIC->GetBrainComponent()->StopLogic("Dead");
 	}
+}
+
+void ACharacterBase::EnableInputControl()
+{
+	if( bIsDead )
+		return;
+	
+	APlayerController* PC = Cast<APlayerController>(GetController());
+	if( PC )
+	{
+		PC->EnableInput(PC);
+	}
+
+	AAIController* AIC = Cast<AAIController>(GetController());
+	if( AIC )
+	{
+		AIC->GetBrainComponent()->RestartLogic();
+	}
+}
+
+void ACharacterBase::AddAbilityToUI(TSubclassOf<UGameplayAbilityBase> AbilityToAdd)
+{
+	APlayerControllerBase* PlayerControllerBase = Cast<APlayerControllerBase>(GetController());
+	if( PlayerControllerBase)
+	{
+		UGameplayAbilityBase* AbilityInstance = AbilityToAdd.Get()->GetDefaultObject<UGameplayAbilityBase>();
+		if(AbilityInstance)
+		{
+			FGameplayAbilityInfo AbilityInfo = AbilityInstance->GetAbilityInfo();
+			PlayerControllerBase->AddAbilityToUI(AbilityInfo);
+		}
+	}
+	
 }
 
